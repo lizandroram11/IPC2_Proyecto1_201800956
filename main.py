@@ -1,70 +1,73 @@
-import xml_elementtree as xmlet 
-import xml_minidom as xmldom
+import os
+from xml_ET import XMLManager
 
-def menu():
-    print("------------------------------------------")
-    print("************  MENU  **********************")
-    print("------------------------------------------")
-    print("1.- Cargar archivo               *********")
-    print("2.- Procesar archivo             *********")
-    print("3.- Escribir archivo salida      *********")
-    print("4.- Mostrar datos del estudiante *********")
-    print("5.- Generar gráfica              *********")
-    print("6.- Salir                        *********")
-    print("------------------------------------------")
+def mostrar_menu():
+    print("\n===== MENÚ PRINCIPAL =====")
+    print("1. Cargar archivo")
+    print("2. Procesar archivo (F y Fp)")
+    print("3. Escribir archivo de salida (reducción)")
+    print("4. Mostrar datos del estudiante")
+    print("5. Generar gráfica (pendiente)")
+    print("6. Salir")
+    print("==========================")
 
-    opcion = int(input('Ingresa una opción: '))
-    return opcion
-
-if __name__ == "__main__":
-
-    campos_agricolas = []
+def main():
+    gestor = XMLManager()
+    archivo_cargado = False
 
     while True:
-        opc = menu()
-        if opc == 1: #Leer archivo xml con ElementTree
-            ruta = input('Ingresa la ruta origen del archivo: ') 
-            nombre_archivo = input('Ingresa el nombre del archivo: ')
-            xmlet.leer_archivo(ruta + nombre_archivo, campos_agricolas)
-            print('')
-        elif opc == 2: #Procesar Archivo
-            pass
+        mostrar_menu()
+        opcion = input("Seleccione una opción: ").strip()
 
-        elif opc == 3: #Escribir Archivo de salida
-            for campo in campos_agricolas:
-                '''
-                #Mostrar campos Agricolas
-                print('====================================')
-                print(campo.get_nombre())
-                print('====================================')
-                for estacion in campo.estaciones:
-                    print(estacion.get_nombre())   
-                print('')'''
+        if opcion == "1":
+            ruta = input("Ingrese la ruta del archivo (ej: C:/Users/.../): ").strip()
+            nombre = input("Ingrese el nombre del archivo (ej: entradas.xml): ").strip()
+            archivo = os.path.join(ruta, nombre)
+            try:
+                gestor.cargar_archivo(archivo)
+                archivo_cargado = True
+            except Exception as e:
+                print(f"❌ No se pudo cargar el archivo: {e}")
 
-        elif opc == 4: #Mostrar datos del Estudiante
-            '''
-            #Escribir archivo xml con ElementTree
-            ruta = input('Ingresa la ruta destino del archivo: ') 
-            nombre_archivo = input('Ingresa el nombre del archivo: ')
-            xmlet.escribir_archivo(ruta + nombre_archivo, campos_agricolas)
-            print('')'''
+        elif opcion == "2":
+            if not archivo_cargado:
+                print("⚠️ Primero debe cargar un archivo.")
+            else:
+                print("🔄 Procesando archivo...")
+                gestor.procesar_archivo()
+                gestor.generar_patrones()
 
-            print("Hugo Lizandro Ramirez Siquinajay")
-            print("201800956")
-            print("Introducción a la Programación y Computación 2")
-            print("Seccion N")
-            print("Ingenieria en Ciencias y Sistemas")
-            print("4to Semestre")
+        elif opcion == "3":
+            if not archivo_cargado:
+                print("⚠️ Primero debe cargar un archivo.")
+            else:
+                ruta = input("Ingrese la ruta donde guardar el archivo: ").strip()
+                nombre = input("Ingrese el nombre del archivo de salida (ej: salida.xml): ").strip()
+                archivo_salida = os.path.join(ruta, nombre)
+                grupos = gestor.reducir_estaciones()
+                gestor.escribir_salida(archivo_salida, grupos)
 
-        elif opc == 5: #Generar Grafica
-            '''
-            #Escribir archivo xml con Mini
-            ruta = input('Ingresa la ruta destino del archivo: ') 
-            nombre_archivo = input('Ingresa el nombre del archivo: ')
-            xmldom.escribir_inventario(ruta + nombre_archivo, campos_agricolas)
-            print('')'''
-        elif opc == 6:
-            print('Programa finalizado')
+        elif opcion == "4":
+            print("\n👨‍💻 Datos del estudiante:")
+            print("Nombre : Tu Nombre Aquí")
+            print("Carnet : 201800956")
+            print("Curso  : Introducción a la Programación y Computación 2")
+            print("Carrera: Ingeniería en Ciencias y Sistemas")
+            print("Semestre: 4to")
+            print("Repositorio: https://github.com/usuario/IPC2_Proyecto1_201800956")
+
+        elif opcion == "5":
+            if not archivo_cargado:
+                print("⚠️ Primero debe cargar un archivo.")
+            else:
+                print("📊 Generando gráfica con Graphviz (por implementar)...")
+
+        elif opcion == "6":
+            print("👋 Saliendo del programa...")
             break
+
         else:
-            print('Opción no válida\n')
+            print("❌ Opción inválida, intente de nuevo.")
+
+if __name__ == "__main__":
+    main()

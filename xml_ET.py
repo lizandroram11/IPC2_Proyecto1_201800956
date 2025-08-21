@@ -1,45 +1,247 @@
-import xml.etree.ElementTree as ET 
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 from clases.campo import CampoAgricola
-from clases.estacion import EstacionBase
+from clases.estacion import Estacion
+from clases.sensor_suelo import SensorSuelo
+from clases.sensor_cultivo import SensorCultivo
+from clases.frecuencia import Frecuencia
+from clases.nodo import ListaEnlazada
 
-def leer_archivo(ruta, campos):
-    try:
-        tree = ET.parse(ruta) #Parsear el archivo XML
-        root = tree.getroot() #Obtener el elemento raíz
+class XMLManager:
+    def __init__(self):
+        self.campos = ListaEnlazada()
 
-        for campo_xml in root.findall('campo'):
-            campo_id = campo_xml.get('id')
-            campo_nombre = campo_xml.get('nombre')
-            campo = CampoAgricola(campo_id, campo_nombre)
+    # Helpers that work with ListaEnlazada instead of Python lists
+    def _ids_de_estaciones(self, campo):
+        ids = ListaEnlazada()
+        for est in campo.estaciones.recorrer():
+            ids.insertar(est.get_id())
+        return ids
 
-            # Estaciones base
-            for estacion_xml in campo_xml.find('estacionesBase').findall('estacion'):
-                id_estacion = estacion_xml.get('id')
-                nombre_estacion = estacion_xml.get('nombre')
-                estacion = EstacionBase(id_estacion, nombre_estacion)
-                campo.agregar_estacion(estacion)
-            
-            campos.append(campo)
-            print(f'Campo {campo_id} cargado exitosamente')
+    def _sensores_unicos(self, iter_estaciones, attr_name):
+        unicos = ListaEnlazada()
+        for est in iter_estaciones.recorrer():
+            sensores = getattr(est, attr_name)
+            for s in sensores.recorrer():
+                if not unicos.contiene(lambda x: x.get_id() == s.get_id()):
+                    unicos.insertar(s)
+        return unicos
 
-    except Exception as e:
-        print(f"Error al cargar el archivo XML: {e}")
+    def _valor_frecuencia(self, sensor, id_est):
+        # retorna el valor numérico o 0
+        for f in sensor.frecuencias.recorrer():
+            if f.id_estacion == id_est:
+                return f.valor
+        return 0
 
+    def _existe_frecuencia(self, sensor, id_est):
+        for f in sensor.frecuencias.recorrer():
+            if f.id_estacion == id_est:
+                return 1
+        return 0
 
-def escribir_archivo(ruta, campos):
-    root = ET.Element('camposAgricolas') #Crea el elemento raíz con la etiqueta 'camposAgricolas'
-    
-    for campo in campos:
-        campos = ET.SubElement(root, 'campo') #Agrega a la raíz un subelemento 'campo'
-        #agrega atributos al subelemento
-        campos.set('id', campo.get_id())
-        campos.set('nombre', campo.get_nombre())
+    def cargar_archivo(self, ruta):
+        tree = ET.parse(ruta)
+        root = tree.getroot()
 
-        estaciones_base = ET.SubElement(campos, 'estacionesBase') 
-        for estacion in campo.estaciones:
-            e =  ET.SubElement(estaciones_base, 'estacion')
-            e.set('id', estacion.get_id())
-            e.set('nombre', estacion.get_nombre())
-            
-    ET.indent(root, space='\t') #Agrega identación para que se vea mejor
-    ET.ElementTree(root).write(ruta, encoding='UTF-8', xml_declaration=True) #Guardar el archivo XML
+        for campo_xml in root.findall("campo"):
+            id_campo = campo_xml.get("id")
+            nombre_campo = campo_xml.get("nombre")
+            campo = CampoAgricola(id_campo, nombre_campo)
+
+            # Estaciones
+            estaciones_xml = campo_xml.find("estacionesBase")
+            if estaciones_xml is not None:
+                for est_xml in estaciones_xml.findall("estacion"):
+                    est = Estacion(est_xml.get("id"), est_xml.get("nombre"))
+                    campo.agregar_estacion(est)
+
+            # Sensores Suelo
+            suelo_xml = campo_xml.find("sensoresSuelo")
+            if suelo_xml is not None:
+                for s_xml in suelo_xml.findall("sensorS"):
+                    sensor = SensorSuelo(s_xml.get("id"), s_xml.get("nombre"))
+                    for f_xml in s_xml.findall("frecuencia"):
+                        sensor.agregar_frecuencia(Frecuencia(f_xml.get("idEstacion"), f_xml.text.strip()))
+                    # asignar a estaciones relacionadas
+                    for est in campo.estaciones.recorrer():
+                        if self._existe_frecuencia(sensor, est.get_id()) == 1:
+                            est.agregar_sensor_suelo(sensor)
+
+            # Sensores Cultivo
+            cultivo_xml = campo_xml.find("sensoresCultivo")
+            if cultivo_xml is not None:
+                for t_xml in cultivo_xml.findall("sensorT"):
+                    sensor = SensorCultivo(t_xml.get("id"), t_xml.get("nombre"))
+                    for f_xml in t_xml.findall("frecuencia"):
+                        sensor.agregar_frecuencia(Frecuencia(f_xml.get("idEstacion"), f_xml.text.strip()))
+                    for est in campo.estaciones.recorrer():
+                        if self._existe_frecuencia(sensor, est.get_id()) == 1:
+                            est.agregar_sensor_cultivo(sensor)
+
+            self.campos.insertar(campo)
+        print("✅ Archivo cargado correctamente.")
+
+    def procesar_archivo(self):
+        if self.campos.esta_vacia():
+            print("⚠️ No hay campos cargados.")
+            return
+
+        for campo in self.campos.recorrer():
+            print(f"\nProcesando Campo: {campo.get_nombre()} (ID: {campo.get_id()})")
+
+            estaciones_ids = self._ids_de_estaciones(campo)
+            sensores_suelo = self._sensores_unicos(campo.estaciones, "sensores_suelo")
+            sensores_cultivo = self._sensores_unicos(campo.estaciones, "sensores_cultivo")
+
+            # Matriz F[n,s]
+            cabecera_suelo = [s.get_id() for s in sensores_suelo.recorrer()]
+            print("\n📊 Matriz F[n,s] (Estaciones x Sensores de Suelo)")
+            print("     " + "  ".join(cabecera_suelo))
+            for id_est in estaciones_ids.recorrer():
+                fila_vals = []
+                for s in sensores_suelo.recorrer():
+                    fila_vals.append(str(self._valor_frecuencia(s, id_est)))
+                print(f"{id_est}  " + "  ".join(fila_vals))
+
+            # Matriz F[n,t]
+            cabecera_cult = [s.get_id() for s in sensores_cultivo.recorrer()]
+            print("\n📊 Matriz F[n,t] (Estaciones x Sensores de Cultivo)")
+            print("     " + "  ".join(cabecera_cult))
+            for id_est in estaciones_ids.recorrer():
+                fila_vals = []
+                for s in sensores_cultivo.recorrer():
+                    fila_vals.append(str(self._valor_frecuencia(s, id_est)))
+                print(f"{id_est}  " + "  ".join(fila_vals))
+
+    def generar_patrones(self):
+        if self.campos.esta_vacia():
+            print("⚠️ No hay campos cargados.")
+            return {}
+
+        patrones_por_campo = {}
+        for campo in self.campos.recorrer():
+            estaciones_ids = self._ids_de_estaciones(campo)
+            sensores_suelo = self._sensores_unicos(campo.estaciones, "sensores_suelo")
+            sensores_cultivo = self._sensores_unicos(campo.estaciones, "sensores_cultivo")
+
+            print(f"\nGenerando patrones para Campo: {campo.get_nombre()} (ID: {campo.get_id()})")
+
+            print("\n📊 Matriz de Patrones Fp[n,s]")
+            cabecera_suelo = [s.get_id() for s in sensores_suelo.recorrer()]
+            print("     " + "  ".join(cabecera_suelo))
+            patrones_suelo = {}
+            for id_est in estaciones_ids.recorrer():
+                bits = []
+                for s in sensores_suelo.recorrer():
+                    bits.append(str(self._existe_frecuencia(s, id_est)))
+                print(f"{id_est}  " + "  ".join(bits))
+                patrones_suelo[id_est] = "".join(bits)
+
+            print("\n📊 Matriz de Patrones Fp[n,t]")
+            cabecera_cult = [s.get_id() for s in sensores_cultivo.recorrer()]
+            print("     " + "  ".join(cabecera_cult))
+            patrones_cult = {}
+            for id_est in estaciones_ids.recorrer():
+                bits = []
+                for s in sensores_cultivo.recorrer():
+                    bits.append(str(self._existe_frecuencia(s, id_est)))
+                print(f"{id_est}  " + "  ".join(bits))
+                patrones_cult[id_est] = "".join(bits)
+
+            patrones_por_campo[campo.get_id()] = (campo, patrones_suelo, patrones_cult)
+        return patrones_por_campo
+
+    def reducir_estaciones(self):
+        patrones = self.generar_patrones()
+        resultado = []  # (campo, grupos)  *usaremos para escribir salida*
+
+        for _, (campo, p_suelo, p_cult) in patrones.items():
+            grupos = []
+            usados = set()
+
+            # construir lista de estaciones (ListaEnlazada)
+            estaciones = ListaEnlazada()
+            for e in campo.estaciones.recorrer():
+                estaciones.insertar(e)
+
+            for e1 in estaciones.recorrer():
+                if e1.get_id() in usados:
+                    continue
+                grupo = ListaEnlazada()
+                grupo.insertar(e1)
+                usados.add(e1.get_id())
+
+                for e2 in estaciones.recorrer():
+                    if e2.get_id() in usados or e2.get_id() == e1.get_id():
+                        continue
+                    if p_suelo.get(e1.get_id(), "") == p_suelo.get(e2.get_id(), "") and \
+                        p_cult.get(e1.get_id(), "") == p_cult.get(e2.get_id(), ""):
+                        grupo.insertar(e2)
+                        usados.add(e2.get_id())
+
+                grupos.append(grupo)
+                # mostrar
+            print("\n📌 Agrupamiento de estaciones (Campo: " + campo.get_nombre() + ")")
+            for g in grupos:
+                ids = [e.get_id() for e in g.recorrer()]
+                print("   Grupo: " + ", ".join(ids))
+
+            resultado.append((campo, grupos))
+        return resultado
+
+    def escribir_salida(self, ruta_salida, grupos):
+        root = ET.Element("camposAgricolas")
+
+        for campo, grupos_estaciones in grupos:
+            campo_elem = ET.SubElement(root, "campo", id=campo.get_id(), nombre=campo.get_nombre())
+            estaciones_reducidas_elem = ET.SubElement(campo_elem, "estacionesBaseReducidas")
+
+            # crear estaciones reducidas
+            for grupo in grupos_estaciones:
+                # nuevo id = del primero
+                primero = None
+                nombres_concat = []
+                for e in grupo.recorrer():
+                    if primero is None:
+                        primero = e
+                    nombres_concat.append(e.get_nombre())
+                ET.SubElement(estaciones_reducidas_elem, "estacion",
+                              id=primero.get_id(), nombre=", ".join(nombres_concat))
+
+            # Sensores Suelo
+            sensores_suelo_elem = ET.SubElement(campo_elem, "sensoresSuelo")
+            # Necesitamos lista de sensores únicos
+            sensores_suelo = self._sensores_unicos(campo.estaciones, "sensores_suelo")
+            for s in sensores_suelo.recorrer():
+                s_elem = ET.SubElement(sensores_suelo_elem, "sensorS", id=s.get_id(), nombre=s.get_nombre())
+                for grupo in grupos_estaciones:
+                    # sumatoria de frecuencias por grupo
+                    id_destino = None
+                    suma = 0
+                    for e in grupo.recorrer():
+                        if id_destino is None:
+                            id_destino = e.get_id()
+                        suma += self._valor_frecuencia(s, e.get_id())
+                    f_elem = ET.SubElement(s_elem, "frecuencia", idEstacion=id_destino)
+                    f_elem.text = str(suma)
+
+            # Sensores Cultivo
+            sensores_cult_elem = ET.SubElement(campo_elem, "sensoresCultivo")
+            sensores_cultivo = self._sensores_unicos(campo.estaciones, "sensores_cultivo")
+            for s in sensores_cultivo.recorrer():
+                s_elem = ET.SubElement(sensores_cult_elem, "sensorT", id=s.get_id(), nombre=s.get_nombre())
+                for grupo in grupos_estaciones:
+                    id_destino = None
+                    suma = 0
+                    for e in grupo.recorrer():
+                        if id_destino is None:
+                            id_destino = e.get_id()
+                        suma += self._valor_frecuencia(s, e.get_id())
+                    f_elem = ET.SubElement(s_elem, "frecuencia", idEstacion=id_destino)
+                    f_elem.text = str(suma)
+
+        xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(indent="   ")
+        with open(ruta_salida, "w", encoding="utf-8") as f:
+            f.write(xml_str)
+        print(f"✅ Archivo de salida escrito en: {ruta_salida}")

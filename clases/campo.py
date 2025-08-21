@@ -1,8 +1,10 @@
+from clases.nodo import ListaEnlazada
+
 class CampoAgricola:
     def __init__(self, id, nombre):
         self.__id = id
         self.__nombre = nombre
-        self.estaciones = []
+        self.estaciones = ListaEnlazada()
 
     def get_id(self):
         return self.__id
@@ -11,4 +13,8 @@ class CampoAgricola:
         return self.__nombre
 
     def agregar_estacion(self, estacion):
-        self.estaciones.append(estacion)
+        self.estaciones.insertar(estacion)
+
+    def mostrar_estaciones(self):
+        for estacion in self.estaciones.recorrer():
+            print(f"- {estacion.get_nombre()} (ID: {estacion.get_id()})")
