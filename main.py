@@ -49,18 +49,19 @@ def main():
 
         elif opcion == "4":
             print("\n👨‍💻 Datos del estudiante:")
-            print("Nombre : Tu Nombre Aquí")
+            print("Nombre : Hugo Lizandro Ramirez Siquinajay")
             print("Carnet : 201800956")
             print("Curso  : Introducción a la Programación y Computación 2")
             print("Carrera: Ingeniería en Ciencias y Sistemas")
             print("Semestre: 4to")
-            print("Repositorio: https://github.com/usuario/IPC2_Proyecto1_201800956")
+            print("Repositorio: https://github.com/lizandroram11/IPC2_Proyecto1_201800956.git")
 
         elif opcion == "5":
             if not archivo_cargado:
                 print("⚠️ Primero debe cargar un archivo.")
             else:
-                print("📊 Generando gráfica con Graphviz (por implementar)...")
+                nombre = input("Ingrese el nombre del archivo de la gráfica (sin extensión, ej: grafica): ").strip()
+                gestor.generar_grafica(nombre)
 
         elif opcion == "6":
             print("👋 Saliendo del programa...")

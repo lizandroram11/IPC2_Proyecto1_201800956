@@ -6,6 +6,7 @@ from clases.sensor_suelo import SensorSuelo
 from clases.sensor_cultivo import SensorCultivo
 from clases.frecuencia import Frecuencia
 from clases.nodo import ListaEnlazada
+from graphviz import Digraph
 
 class XMLManager:
     def __init__(self):
@@ -245,3 +246,35 @@ class XMLManager:
         with open(ruta_salida, "w", encoding="utf-8") as f:
             f.write(xml_str)
         print(f"✅ Archivo de salida escrito en: {ruta_salida}")
+
+    def generar_grafica(self, archivo_salida="grafica"):
+        if self.campos.esta_vacia():
+            print("⚠️ No hay campos cargados.")
+            return
+
+        dot = Digraph(comment="Campos Agrícolas", format="png")
+        dot.attr(rankdir="LR", size="8")
+
+        for campo in self.campos.recorrer():
+            campo_id = f"campo_{campo.get_id()}"
+            dot.node(campo_id, f"Campo: {campo.get_nombre()}", shape="box", style="filled", color="lightblue")
+
+            for est in campo.estaciones.recorrer():
+                est_id = f"est_{est.get_id()}"
+                dot.node(est_id, f"Estación: {est.get_nombre()}", shape="ellipse", style="filled", color="lightgreen")
+                dot.edge(campo_id, est_id)
+
+                # Sensores de suelo
+                for sensor in est.sensores_suelo.recorrer():
+                    s_id = f"suelo_{sensor.get_id()}"
+                    dot.node(s_id, f"Suelo: {sensor.get_nombre()}", shape="diamond", style="filled", color="orange")
+                    dot.edge(est_id, s_id)
+
+                # Sensores de cultivo
+                for sensor in est.sensores_cultivo.recorrer():
+                    c_id = f"cult_{sensor.get_id()}"
+                    dot.node(c_id, f"Cultivo: {sensor.get_nombre()}", shape="diamond", style="filled", color="pink")
+                    dot.edge(est_id, c_id)
+
+        output_path = dot.render(archivo_salida, cleanup=True)
+        print(f"✅ Gráfica generada: {output_path}")

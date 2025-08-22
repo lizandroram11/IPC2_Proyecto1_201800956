@@ -17,6 +17,8 @@ venv/
 
 # Archivos generados de pruebas
 salida_test.xml
+prueba_grafica.png
+grafica.png
 
 # Archivos de sistema (Windows / Mac)
 Thumbs.db
