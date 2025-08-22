@@ -8,17 +8,21 @@ from clases.frecuencia import Frecuencia
 from clases.nodo import ListaEnlazada
 from graphviz import Digraph
 
+# Definición de la clase XMLManager, representa una entidad del sistema
 class XMLManager:
+# Método __init__: se encarga de una funcionalidad específica de la clase o del flujo principal
     def __init__(self):
         self.campos = ListaEnlazada()
 
     # Helpers that work with ListaEnlazada instead of Python lists
+# Método _ids_de_estaciones: se encarga de una funcionalidad específica de la clase o del flujo principal
     def _ids_de_estaciones(self, campo):
         ids = ListaEnlazada()
         for est in campo.estaciones.recorrer():
             ids.insertar(est.get_id())
         return ids
 
+# Método _sensores_unicos: se encarga de una funcionalidad específica de la clase o del flujo principal
     def _sensores_unicos(self, iter_estaciones, attr_name):
         unicos = ListaEnlazada()
         for est in iter_estaciones.recorrer():
@@ -28,6 +32,7 @@ class XMLManager:
                     unicos.insertar(s)
         return unicos
 
+# Método _valor_frecuencia: se encarga de una funcionalidad específica de la clase o del flujo principal
     def _valor_frecuencia(self, sensor, id_est):
         # retorna el valor numérico o 0
         for f in sensor.frecuencias.recorrer():
@@ -35,12 +40,14 @@ class XMLManager:
                 return f.valor
         return 0
 
+# Método _existe_frecuencia: se encarga de una funcionalidad específica de la clase o del flujo principal
     def _existe_frecuencia(self, sensor, id_est):
         for f in sensor.frecuencias.recorrer():
             if f.id_estacion == id_est:
                 return 1
         return 0
 
+# Método cargar_archivo: se encarga de una funcionalidad específica de la clase o del flujo principal
     def cargar_archivo(self, ruta):
         tree = ET.parse(ruta)
         root = tree.getroot()
@@ -81,11 +88,12 @@ class XMLManager:
                             est.agregar_sensor_cultivo(sensor)
 
             self.campos.insertar(campo)
-        print("✅ Archivo cargado correctamente.")
+        print("Archivo cargado correctamente.")
 
+# Método procesar_archivo: se encarga de una funcionalidad específica de la clase o del flujo principal
     def procesar_archivo(self):
         if self.campos.esta_vacia():
-            print("⚠️ No hay campos cargados.")
+            print("No hay campos cargados.")
             return
 
         for campo in self.campos.recorrer():
@@ -97,7 +105,7 @@ class XMLManager:
 
             # Matriz F[n,s]
             cabecera_suelo = [s.get_id() for s in sensores_suelo.recorrer()]
-            print("\n📊 Matriz F[n,s] (Estaciones x Sensores de Suelo)")
+            print("\nMatriz F[n,s] (Estaciones x Sensores de Suelo)")
             print("     " + "  ".join(cabecera_suelo))
             for id_est in estaciones_ids.recorrer():
                 fila_vals = []
@@ -107,7 +115,7 @@ class XMLManager:
 
             # Matriz F[n,t]
             cabecera_cult = [s.get_id() for s in sensores_cultivo.recorrer()]
-            print("\n📊 Matriz F[n,t] (Estaciones x Sensores de Cultivo)")
+            print("\nMatriz F[n,t] (Estaciones x Sensores de Cultivo)")
             print("     " + "  ".join(cabecera_cult))
             for id_est in estaciones_ids.recorrer():
                 fila_vals = []
@@ -115,9 +123,10 @@ class XMLManager:
                     fila_vals.append(str(self._valor_frecuencia(s, id_est)))
                 print(f"{id_est}  " + "  ".join(fila_vals))
 
+# Método generar_patrones: se encarga de una funcionalidad específica de la clase o del flujo principal
     def generar_patrones(self):
         if self.campos.esta_vacia():
-            print("⚠️ No hay campos cargados.")
+            print("No hay campos cargados.")
             return {}
 
         patrones_por_campo = {}
@@ -128,7 +137,7 @@ class XMLManager:
 
             print(f"\nGenerando patrones para Campo: {campo.get_nombre()} (ID: {campo.get_id()})")
 
-            print("\n📊 Matriz de Patrones Fp[n,s]")
+            print("\nMatriz de Patrones Fp[n,s]")
             cabecera_suelo = [s.get_id() for s in sensores_suelo.recorrer()]
             print("     " + "  ".join(cabecera_suelo))
             patrones_suelo = {}
@@ -139,7 +148,7 @@ class XMLManager:
                 print(f"{id_est}  " + "  ".join(bits))
                 patrones_suelo[id_est] = "".join(bits)
 
-            print("\n📊 Matriz de Patrones Fp[n,t]")
+            print("\nMatriz de Patrones Fp[n,t]")
             cabecera_cult = [s.get_id() for s in sensores_cultivo.recorrer()]
             print("     " + "  ".join(cabecera_cult))
             patrones_cult = {}
@@ -153,6 +162,7 @@ class XMLManager:
             patrones_por_campo[campo.get_id()] = (campo, patrones_suelo, patrones_cult)
         return patrones_por_campo
 
+# Método reducir_estaciones: se encarga de una funcionalidad específica de la clase o del flujo principal
     def reducir_estaciones(self):
         patrones = self.generar_patrones()
         resultado = []  # (campo, grupos)  *usaremos para escribir salida*
@@ -183,7 +193,7 @@ class XMLManager:
 
                 grupos.append(grupo)
                 # mostrar
-            print("\n📌 Agrupamiento de estaciones (Campo: " + campo.get_nombre() + ")")
+            print("\nAgrupamiento de estaciones (Campo: " + campo.get_nombre() + ")")
             for g in grupos:
                 ids = [e.get_id() for e in g.recorrer()]
                 print("   Grupo: " + ", ".join(ids))
@@ -191,6 +201,7 @@ class XMLManager:
             resultado.append((campo, grupos))
         return resultado
 
+# Método escribir_salida: se encarga de una funcionalidad específica de la clase o del flujo principal
     def escribir_salida(self, ruta_salida, grupos):
         root = ET.Element("camposAgricolas")
 
@@ -245,11 +256,12 @@ class XMLManager:
         xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(indent="   ")
         with open(ruta_salida, "w", encoding="utf-8") as f:
             f.write(xml_str)
-        print(f"✅ Archivo de salida escrito en: {ruta_salida}")
+        print(f"Archivo de salida escrito en: {ruta_salida}")
 
+# Método generar_grafica: se encarga de una funcionalidad específica de la clase o del flujo principal
     def generar_grafica(self, archivo_salida="grafica"):
         if self.campos.esta_vacia():
-            print("⚠️ No hay campos cargados.")
+            print("No hay campos cargados.")
             return
 
         dot = Digraph(comment="Campos Agrícolas", format="png")
@@ -277,4 +289,4 @@ class XMLManager:
                     dot.edge(est_id, c_id)
 
         output_path = dot.render(archivo_salida, cleanup=True)
-        print(f"✅ Gráfica generada: {output_path}")
+        print(f"Gráfica generada: {output_path}")

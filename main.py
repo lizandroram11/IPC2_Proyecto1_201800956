@@ -7,7 +7,7 @@ def mostrar_menu():
     print("2. Procesar archivo (F y Fp)")
     print("3. Escribir archivo de salida (reducción)")
     print("4. Mostrar datos del estudiante")
-    print("5. Generar gráfica (pendiente)")
+    print("5. Generar gráfica")
     print("6. Salir")
     print("==========================")
 
@@ -27,19 +27,19 @@ def main():
                 gestor.cargar_archivo(archivo)
                 archivo_cargado = True
             except Exception as e:
-                print(f"❌ No se pudo cargar el archivo: {e}")
+                print(f"No se pudo cargar el archivo: {e}")
 
         elif opcion == "2":
             if not archivo_cargado:
-                print("⚠️ Primero debe cargar un archivo.")
+                print("Primero debe cargar un archivo.")
             else:
-                print("🔄 Procesando archivo...")
+                print("Procesando archivo...")
                 gestor.procesar_archivo()
                 gestor.generar_patrones()
 
         elif opcion == "3":
             if not archivo_cargado:
-                print("⚠️ Primero debe cargar un archivo.")
+                print("Primero debe cargar un archivo.")
             else:
                 ruta = input("Ingrese la ruta donde guardar el archivo: ").strip()
                 nombre = input("Ingrese el nombre del archivo de salida (ej: salida.xml): ").strip()
@@ -48,7 +48,7 @@ def main():
                 gestor.escribir_salida(archivo_salida, grupos)
 
         elif opcion == "4":
-            print("\n👨‍💻 Datos del estudiante:")
+            print("\nDatos del estudiante:")
             print("Nombre : Hugo Lizandro Ramirez Siquinajay")
             print("Carnet : 201800956")
             print("Curso  : Introducción a la Programación y Computación 2")
@@ -58,17 +58,17 @@ def main():
 
         elif opcion == "5":
             if not archivo_cargado:
-                print("⚠️ Primero debe cargar un archivo.")
+                print("Primero debe cargar un archivo.")
             else:
                 nombre = input("Ingrese el nombre del archivo de la gráfica (sin extensión, ej: grafica): ").strip()
                 gestor.generar_grafica(nombre)
 
         elif opcion == "6":
-            print("👋 Saliendo del programa...")
+            print("Saliendo del programa...")
             break
 
         else:
-            print("❌ Opción inválida, intente de nuevo.")
+            print("Opción inválida, intente de nuevo.")
 
 if __name__ == "__main__":
     main()
